@@ -1,0 +1,8 @@
+{
+  "name": "AREVYS Gym y Fitness",
+  "short_name": "AREVYS",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#05090b",
+  "theme_color": "#05090b"
+}
