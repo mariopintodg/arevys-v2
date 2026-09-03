@@ -45,7 +45,12 @@
     { id: 'plancha', name: 'Plancha frontal', group: 'Core', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '30 s', weight: 0, rest: 50, primary: ['abdominales'], secondary: ['gluteos','deltoides'], cue: 'Alinea costillas y pelvis mientras respiras con calma.' },
     { id: 'bird_dog', name: 'Bird dog', group: 'Movilidad', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '8/lado', weight: 0, rest: 40, primary: ['abdominales'], secondary: ['gluteos','dorsales'], cue: 'Extiende sin rotar la pelvis y vuelve lentamente.' },
     { id: 'puente', name: 'Puente de glúteos', group: 'Movilidad', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '12–15', weight: 0, rest: 45, primary: ['gluteos'], secondary: ['isquiotibiales'], cue: 'Empuja desde los talones y evita arquear la espalda.' },
-    { id: 'movilidad', name: 'Movilidad torácica', group: 'Movilidad', equipment: 'Peso corporal', level: 'Inicial', sets: 2, reps: '8/lado', weight: 0, rest: 30, primary: ['dorsales'], secondary: ['deltoides'], cue: 'Respira y amplía el recorrido sin forzar.' }
+    { id: 'movilidad', name: 'Movilidad torácica', group: 'Movilidad', equipment: 'Peso corporal', level: 'Inicial', sets: 2, reps: '8/lado', weight: 0, rest: 30, primary: ['dorsales'], secondary: ['deltoides'], cue: 'Respira y amplía el recorrido sin forzar.' },
+    { id: 'flexiones', name: 'Flexiones', group: 'Pecho', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '8–15', weight: 0, rest: 60, primary: ['pectorales'], secondary: ['triceps','deltoides'], cue: 'Mantén el cuerpo alineado y desciende con control.' },
+    { id: 'zancada', name: 'Zancada alterna', group: 'Piernas', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '8/lado', weight: 0, rest: 60, primary: ['cuadriceps','gluteos'], secondary: ['isquiotibiales'], cue: 'Da un paso estable y empuja el suelo para volver.' },
+    { id: 'superman', name: 'Extensión lumbar en suelo', group: 'Espalda', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '10–12', weight: 0, rest: 50, primary: ['dorsales'], secondary: ['gluteos'], cue: 'Eleva brazos y piernas suavemente sin comprimir el cuello.' },
+    { id: 'pike_pushup', name: 'Flexión en pica', group: 'Hombros', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '6–10', weight: 0, rest: 60, primary: ['deltoides'], secondary: ['triceps','pectorales'], cue: 'Lleva la cabeza hacia el suelo manteniendo la cadera elevada.' },
+    { id: 'pantorrilla_suelo', name: 'Elevación de pantorrillas de pie', group: 'Piernas', equipment: 'Peso corporal', level: 'Inicial', sets: 3, reps: '15–20', weight: 0, rest: 45, primary: ['pantorrillas'], secondary: [], cue: 'Sube todo lo posible y pausa arriba antes de bajar.' }
   ];
 
   const TEMPLATES = [
@@ -57,6 +62,75 @@
   ];
 
   const EXERCISE_BY_ID = Object.fromEntries(EXERCISES.map(exercise => [exercise.id, exercise]));
+
+  const EQUIPMENT_MODES = [
+    { id: 'gym', label: 'Gimnasio completo', shortLabel: 'GIMNASIO', description: 'Máquinas, poleas, barras y mancuernas.', equipment: ['dumbbells','barbell','cable','machines','bench','bodyweight'] },
+    { id: 'home', label: 'Gimnasio en casa', shortLabel: 'CASA', description: 'Equipo doméstico para entrenar con libertad.', equipment: ['dumbbells','bands','bench','mat','bodyweight'] },
+    { id: 'basic', label: 'Equipo básico', shortLabel: 'BÁSICO', description: 'Mancuernas, bandas y lo esencial.', equipment: ['dumbbells','bands','mat','bodyweight'] },
+    { id: 'bodyweight', label: 'Solo peso corporal', shortLabel: 'SIN EQUIPO', description: 'Movimientos sin pesas ni máquinas.', equipment: ['bodyweight','mat'] }
+  ];
+  const EQUIPMENT_OPTIONS = [
+    { id: 'dumbbells', label: 'Mancuernas', description: 'Pesos libres' },
+    { id: 'barbell', label: 'Barra y discos', description: 'Carga progresiva' },
+    { id: 'cable', label: 'Polea', description: 'Tensión constante' },
+    { id: 'machines', label: 'Máquinas', description: 'Recorrido guiado' },
+    { id: 'bench', label: 'Banca', description: 'Apoyo y press' },
+    { id: 'bands', label: 'Bandas', description: 'Resistencia elástica' },
+    { id: 'mat', label: 'Colchoneta', description: 'Suelo y movilidad' },
+    { id: 'bodyweight', label: 'Peso corporal', description: 'Sin equipamiento' }
+  ];
+  const EQUIPMENT_MODE_BY_ID = Object.fromEntries(EQUIPMENT_MODES.map(mode => [mode.id, mode]));
+  const EQUIPMENT_BY_ID = Object.fromEntries(EQUIPMENT_OPTIONS.map(item => [item.id, item]));
+
+  function equipmentModeId(profile = {}) {
+    const requested = profile.equipmentMode;
+    if (requested && EQUIPMENT_MODE_BY_ID[requested]) return requested;
+    return profile.trainingPlace === 'Casa' ? 'home' : 'gym';
+  }
+
+  function equipmentProfile(profile = {}) {
+    const modeId = equipmentModeId(profile);
+    const mode = EQUIPMENT_MODE_BY_ID[modeId];
+    const raw = Array.isArray(profile.equipment) ? profile.equipment : mode.equipment;
+    let selected = [...new Set(raw)].filter(id => EQUIPMENT_BY_ID[id]);
+    if (modeId === 'bodyweight') selected = ['bodyweight','mat'];
+    else {
+      if (!selected.length) selected = [...mode.equipment];
+      if (!selected.includes('bodyweight')) selected.push('bodyweight');
+    }
+    return {
+      modeId,
+      mode,
+      selected,
+      label: mode.label,
+      selectedLabels: selected.map(id => EQUIPMENT_BY_ID[id]?.label || id)
+    };
+  }
+
+  function exerciseEquipmentId(exercise) {
+    const equipment = String(exercise?.equipment || '').toLowerCase();
+    if (equipment.includes('polea')) return 'cable';
+    if (equipment.includes('máquina') || equipment.includes('maquina')) return 'machines';
+    if (equipment.includes('barra')) return 'barbell';
+    if (equipment.includes('mancuer')) return 'dumbbells';
+    if (equipment.includes('peso corporal')) return 'bodyweight';
+    if (equipment.includes('banda')) return 'bands';
+    return null;
+  }
+
+  function exerciseAvailable(exercise, profile = {}) {
+    const equipmentId = exerciseEquipmentId(exercise);
+    return equipmentId === 'bodyweight' || (equipmentId && equipmentProfile(profile).selected.includes(equipmentId));
+  }
+
+  function templateExercises(template, state) {
+    const preferred = template.exercises.map(id => EXERCISE_BY_ID[id]).filter(exercise => exercise && exerciseAvailable(exercise, state.profile));
+    const preferredIds = new Set(preferred.map(exercise => exercise.id));
+    const primaryFallback = EXERCISES.filter(exercise => !preferredIds.has(exercise.id) && exerciseAvailable(exercise, state.profile) && template.focus.some(id => exercise.primary.includes(id)));
+    const primaryIds = new Set(primaryFallback.map(exercise => exercise.id));
+    const secondaryFallback = EXERCISES.filter(exercise => !preferredIds.has(exercise.id) && !primaryIds.has(exercise.id) && exerciseAvailable(exercise, state.profile) && template.focus.some(id => exercise.secondary.includes(id)));
+    return [...preferred, ...primaryFallback, ...secondaryFallback].slice(0, template.exercises.length);
+  }
 
   function nutritionDayKey(value = now()) {
     const date = new Date(value);
@@ -189,6 +263,8 @@
   }
 
   function defaultState(profile = {}) {
+    const initialModeId = equipmentModeId(profile);
+    const initialMode = EQUIPMENT_MODE_BY_ID[initialModeId];
     return {
       version: VERSION,
       onboardingComplete: false,
@@ -199,6 +275,8 @@
         experience: profile.experience || 'Estoy comenzando',
         frequency: profile.frequency || '4 días',
         trainingPlace: profile.trainingPlace || 'Gimnasio',
+        equipmentMode: initialModeId,
+        equipment: Array.isArray(profile.equipment) && profile.equipment.length ? [...profile.equipment] : [...initialMode.equipment],
         age: profile.age || '',
         weight: profile.weight || '',
         height: profile.height || '',
@@ -241,6 +319,10 @@
     merged.preferences = { ...base.preferences, ...(raw?.preferences || {}) };
     merged.connections = { ...base.connections, ...(raw?.connections || {}) };
     merged.muscles = Object.fromEntries(Object.keys(MUSCLES).map(id => [id, { ...base.muscles[id], ...(raw?.muscles?.[id] || {}) }]));
+    const equipment = equipmentProfile(merged.profile);
+    merged.profile.equipmentMode = equipment.modeId;
+    merged.profile.equipment = equipment.selected;
+    merged.profile.trainingPlace = equipment.modeId === 'gym' ? 'Gimnasio' : 'Casa';
     merged.sessions = Array.isArray(raw?.sessions) ? raw.sessions : [];
     merged.snapshots = Array.isArray(raw?.snapshots) ? raw.snapshots : [];
     normalizeNutrition(merged);
@@ -296,6 +378,8 @@
       experience: answers[2] || state.profile.experience,
       frequency: answers[3] || state.profile.frequency,
       trainingPlace: ['Casa','Gimnasio'].includes(answers[3]) ? answers[3] : state.profile.trainingPlace,
+      equipmentMode: answers[3] === 'Casa' ? 'home' : answers[3] === 'Gimnasio' ? 'gym' : state.profile.equipmentMode,
+      equipment: answers[3] === 'Casa' ? [...EQUIPMENT_MODE_BY_ID.home.equipment] : answers[3] === 'Gimnasio' ? [...EQUIPMENT_MODE_BY_ID.gym.equipment] : state.profile.equipment,
       age: answers['Edad'] || state.profile.age,
       weight: answers['Peso (kg)'] || state.profile.weight,
       height: answers['Altura (cm)'] || state.profile.height,
@@ -347,29 +431,40 @@
     let candidates = TEMPLATES.filter(template => !template.restorative).map(template => {
       const average = template.focus.reduce((sum, id) => sum + recoveryValue(state, id), 0) / template.focus.length;
       const repeatPenalty = template.id === lastTemplate ? 10 : 0;
-      return { template, score: average - repeatPenalty };
+      const fitCount = templateExercises(template, state).length;
+      const equipmentAdjustment = fitCount ? Math.min(8, fitCount * 1.5) : -40;
+      return { template, score: average - repeatPenalty + equipmentAdjustment, fitCount };
     });
     const lowContext = (state.daily.energy != null && state.daily.energy <= 2) || (state.daily.stress != null && state.daily.stress >= 4);
-    if (bodyScore < 52 || lowContext) candidates.push({ template: TEMPLATES.find(template => template.id === 'restore'), score: Math.max(72, bodyScore + 18) });
+    if (bodyScore < 52 || lowContext) {
+      const restore = TEMPLATES.find(template => template.id === 'restore');
+      candidates.push({ template: restore, score: Math.max(72, bodyScore + 18) + Math.min(8, templateExercises(restore, state).length * 1.5), fitCount: templateExercises(restore, state).length });
+    }
     candidates.sort((a, b) => b.score - a.score);
-    const selected = candidates[0].template;
+    let selected = candidates[0].template;
+    let plannedExercises = templateExercises(selected, state);
+    if (!plannedExercises.length && selected.id !== 'restore') {
+      selected = TEMPLATES.find(template => template.id === 'restore');
+      plannedExercises = templateExercises(selected, state);
+    }
     const contextDelta = (state.daily.energy == null ? 0 : (state.daily.energy - 3) * 2) - (state.daily.stress == null ? 0 : Math.max(0, state.daily.stress - 3) * 3);
     const compatibility = clamp(round(candidates[0].score + contextDelta), 42, 100);
     const availableTime = Number(state.daily.time) || 45;
     const maxExercises = availableTime <= 25 ? 3 : availableTime <= 40 ? 4 : 5;
     const reduceSets = lowContext || availableTime <= 25;
-    const exercises = selected.exercises.slice(0, maxExercises).map(id => {
-      const exercise = EXERCISE_BY_ID[id];
+    const exercises = plannedExercises.slice(0, maxExercises).map(exercise => {
       return { ...exercise, sets: Math.max(2, exercise.sets - (reduceSets ? 1 : 0)) };
     });
     const duration = Math.min(selected.duration, availableTime + (availableTime < 30 ? 0 : 6));
+    const equipment = equipmentProfile(state.profile);
     const reasons = [];
     if (!state.sessions.length) reasons.push('Parte de un estado basal sin fatiga registrada.');
     else reasons.push(`${selected.focus.map(id => MUSCLES[id].name).join(', ')} presentan la mejor disponibilidad combinada.`);
     if (state.daily.checkedAt) reasons.push(`Se adaptó a ${availableTime} minutos y a tu check-in de hoy.`);
     else reasons.push('Puedes completar un check-in breve para ajustar duración y exigencia.');
     if (selected.restorative) reasons.push('Hoy conviene proteger la adherencia y facilitar la recuperación.');
-    return { id: selected.id, title: selected.title, focus: selected.focus, compatibility, duration, intensity: selected.intensity, exercises, reasons };
+    if (equipment.modeId !== 'gym' || equipment.selected.length < EQUIPMENT_MODE_BY_ID.gym.equipment.length) reasons.push(`Sesión filtrada para ${equipment.label.toLowerCase()}.`);
+    return { id: selected.id, title: selected.title, focus: selected.focus, compatibility, duration, intensity: selected.intensity, exercises, reasons, equipmentMode: equipment.modeId, equipmentLabel: equipment.label, equipment: equipment.selected, equipmentSummary: equipment.selectedLabels.join(' · ') };
   }
 
   function updateDaily(state, patch) {
@@ -494,6 +589,28 @@
 
   function updateProfile(state, patch) {
     state.profile = { ...state.profile, ...patch };
+    const equipment = equipmentProfile(state.profile);
+    state.profile.equipmentMode = equipment.modeId;
+    state.profile.equipment = equipment.selected;
+    state.profile.trainingPlace = equipment.modeId === 'gym' ? 'Gimnasio' : 'Casa';
+    save(state);
+    return state;
+  }
+
+  function setEquipmentMode(state, modeId) {
+    const mode = EQUIPMENT_MODE_BY_ID[modeId] || EQUIPMENT_MODE_BY_ID.gym;
+    state.profile.equipmentMode = mode.id;
+    state.profile.equipment = [...mode.equipment];
+    state.profile.trainingPlace = mode.id === 'gym' ? 'Gimnasio' : 'Casa';
+    save(state);
+    return state;
+  }
+
+  function toggleEquipment(state, equipmentId) {
+    if (!EQUIPMENT_BY_ID[equipmentId] || equipmentId === 'bodyweight' || equipmentModeId(state.profile) === 'bodyweight') return state;
+    const current = equipmentProfile(state.profile).selected;
+    const next = current.includes(equipmentId) ? current.filter(id => id !== equipmentId) : [...current, equipmentId];
+    state.profile.equipment = next.length ? next : ['bodyweight'];
     save(state);
     return state;
   }
@@ -515,11 +632,17 @@
     MUSCLES,
     EXERCISES,
     TEMPLATES,
+    EQUIPMENT_MODES,
+    EQUIPMENT_OPTIONS,
     load,
     save,
     completeOnboarding,
     updateDaily,
     updateProfile,
+    equipmentProfile,
+    exerciseAvailable,
+    setEquipmentMode,
+    toggleEquipment,
     toggleConnection,
     statusForMuscle,
     stateLabel,

@@ -395,6 +395,80 @@ button { touch-action:manipulation; }
   .set-head,.set-row { grid-template-columns:36px repeat(3,1fr) 44px; gap:5px; }.set-row input { font-size:14px; }.library-card__main h2 { font-size:17px; }.gallery-feature button { height:190px; }.gallery-tile button { height:116px; }.app-nav__item { font-size:12px; }.app-nav__item i { width:29px; height:29px; }
 }
 
+/* Contexto de equipamiento: el plan inteligente parte de lo que la persona realmente tiene. */
+.plan-equipment-context {
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  margin:12px 0 16px;
+  padding:12px 13px;
+  border:1px solid rgba(104,216,232,.22);
+  border-radius:16px;
+  background:radial-gradient(circle at 5% 50%,rgba(80,200,218,.12),transparent 35%),#0b1112;
+}
+.plan-equipment-context > i { display:grid; width:46px; height:46px; padding:10px; place-items:center; border:1px solid rgba(104,216,232,.3); border-radius:13px; color:var(--arevys-cyan); }
+.plan-equipment-context > div { min-width:0; }
+.plan-equipment-context strong,.plan-equipment-context small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.plan-equipment-context strong { margin-top:4px; color:#e5e9e5; font-size:14px; }
+.plan-equipment-context small { margin-top:3px; color:#85928f; font-size:10px; }
+.plan-equipment-context > button { min-height:38px; padding:0 11px; border:1px solid rgba(231,190,93,.34); border-radius:10px; color:var(--arevys-gold); background:rgba(231,190,93,.08); font-size:10px; font-weight:850; letter-spacing:.07em; }
+
+.equipment-preferences {
+  margin:17px 0 20px;
+  padding:16px;
+  border:1px solid rgba(104,216,232,.2);
+  border-radius:19px;
+  background:linear-gradient(145deg,rgba(10,27,29,.96),rgba(8,12,13,.98) 68%);
+  box-shadow:inset 0 1px rgba(255,255,255,.04),0 16px 34px rgba(0,0,0,.18);
+}
+.equipment-preferences__header { display:flex; gap:12px; align-items:flex-start; justify-content:space-between; }
+.equipment-preferences__header > div { min-width:0; }
+.equipment-preferences__header h2 { margin:6px 0 4px; color:#edf0eb; font-size:20px; line-height:1.12; }
+.equipment-preferences__header p { margin:0; color:#91a09c; font-size:12px; line-height:1.45; }
+.equipment-preferences__header > i { display:grid; flex:0 0 46px; width:46px; height:46px; padding:10px; place-items:center; border:1px solid rgba(231,190,93,.3); border-radius:14px; color:var(--arevys-gold); background:rgba(231,190,93,.07); }
+.equipment-mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:15px; }
+.equipment-mode-card { display:grid; grid-template-columns:38px minmax(0,1fr) 18px; gap:9px; align-items:center; min-height:95px; padding:11px; border:1px solid rgba(135,157,157,.18); border-radius:14px; color:#dfe5e1; background:rgba(3,8,9,.58); text-align:left; }
+.equipment-mode-card > i { display:grid; width:36px; height:36px; padding:8px; place-items:center; border:1px solid rgba(128,227,241,.2); border-radius:11px; color:#8bdce6; background:rgba(74,196,211,.06); }
+.equipment-mode-card > span { min-width:0; }
+.equipment-mode-card b,.equipment-mode-card small { display:block; }
+.equipment-mode-card b { font-size:12px; line-height:1.18; }
+.equipment-mode-card small { margin-top:4px; color:#82908d; font-size:10px; line-height:1.25; }
+.equipment-mode-card > em { display:grid; width:18px; height:18px; place-items:center; color:#596765; font-size:13px; font-style:normal; }
+.equipment-mode-card > em svg { width:16px; height:16px; }
+.equipment-mode-card.is-active { border-color:rgba(231,190,93,.7); background:linear-gradient(145deg,rgba(70,52,19,.56),rgba(16,15,11,.78)); box-shadow:0 0 0 1px rgba(231,190,93,.08),inset 0 0 25px rgba(231,190,93,.06); }
+.equipment-mode-card.is-active > i { color:var(--arevys-gold); border-color:rgba(231,190,93,.42); background:rgba(231,190,93,.1); }
+.equipment-mode-card.is-active > em { color:var(--arevys-gold); }
+.equipment-detail { margin-top:17px; padding-top:14px; border-top:1px solid rgba(127,150,150,.15); }
+.equipment-detail > div:first-child p { margin:4px 0 10px; color:#778783; font-size:11px; }
+.equipment-chip-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+.equipment-chip { display:grid; grid-template-columns:26px minmax(0,1fr) 15px; gap:7px; align-items:center; min-height:55px; padding:8px; border:1px solid rgba(127,150,150,.18); border-radius:12px; color:#dce4e0; background:rgba(3,8,9,.56); text-align:left; }
+.equipment-chip > i { display:grid; width:25px; height:25px; padding:5px; place-items:center; border-radius:8px; color:#83dbe6; background:rgba(83,200,216,.08); }
+.equipment-chip b,.equipment-chip small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.equipment-chip b { font-size:10px; }
+.equipment-chip small { margin-top:2px; color:#71817d; font-size:8px; }
+.equipment-chip > strong { display:grid; width:15px; height:15px; place-items:center; color:var(--arevys-gold); }
+.equipment-chip > strong svg { width:14px; height:14px; }
+.equipment-chip.is-selected { border-color:rgba(104,216,232,.42); background:rgba(53,151,163,.12); }
+.equipment-chip.is-selected > i { color:var(--arevys-cyan); background:rgba(83,200,216,.16); }
+.equipment-chip.is-locked { opacity:.38; cursor:not-allowed; }
+.equipment-feedback { display:flex; gap:8px; align-items:flex-start; margin:13px 0 0; padding:10px; border:1px solid rgba(121,220,89,.2); border-radius:11px; color:#a7b7ad; background:rgba(121,220,89,.05); font-size:10px; line-height:1.4; }
+.equipment-feedback > i { flex:0 0 17px; width:17px; height:17px; color:var(--state-green); }
+.equipment-feedback b { color:#c8e9c6; }
+
+@media (max-width:370px) {
+  .equipment-preferences { padding:14px 12px; }
+  .equipment-mode-grid,.equipment-chip-grid { gap:6px; }
+  .equipment-mode-card { grid-template-columns:34px minmax(0,1fr) 16px; gap:7px; min-height:91px; padding:9px; }
+  .equipment-mode-card > i { width:32px; height:32px; padding:7px; }
+  .equipment-mode-card b { font-size:11px; }
+  .equipment-mode-card small { font-size:9px; }
+  .equipment-chip { grid-template-columns:23px minmax(0,1fr) 14px; gap:5px; padding:7px; }
+  .equipment-chip > i { width:22px; height:22px; padding:4px; }
+  .equipment-chip b { font-size:9px; }
+  .equipment-chip small { font-size:7px; }
+}
+
 /* Aquiles: presencia editorial para las demostraciones de ejercicios */
 .aquiles-presence {
   display:grid;
