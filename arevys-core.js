@@ -275,6 +275,8 @@
     return {
       version: VERSION,
       onboardingComplete: false,
+      onboardingCompleted: false,
+      onboardingDate: null,
       profile: {
         name: profile.name || '',
         avatar: profile.avatar || 'Helena',
@@ -320,6 +322,10 @@
   function hydrate(raw) {
     const base = defaultState(raw?.profile || {});
     const merged = { ...base, ...(raw || {}) };
+    const onboardingDone = Boolean(raw?.onboardingComplete || raw?.onboardingCompleted);
+    merged.onboardingComplete = onboardingDone;
+    merged.onboardingCompleted = onboardingDone;
+    merged.onboardingDate = raw?.onboardingDate || null;
     merged.profile = { ...base.profile, ...(raw?.profile || {}) };
     merged.daily = { ...base.daily, ...(raw?.daily || {}) };
     merged.nutrition = { ...base.nutrition, ...(raw?.nutrition || {}) };
@@ -329,7 +335,7 @@
     const equipment = equipmentProfile(merged.profile);
     merged.profile.equipmentMode = equipment.modeId;
     merged.profile.equipment = equipment.selected;
-    merged.profile.trainingPlace = equipment.modeId === 'gym' ? 'Gimnasio' : 'Casa';
+    merged.profile.trainingPlace = merged.profile.trainingPlace === 'Ambos' ? 'Ambos' : equipment.modeId === 'gym' ? 'Gimnasio' : 'Casa';
     merged.sessions = Array.isArray(raw?.sessions) ? raw.sessions : [];
     merged.snapshots = Array.isArray(raw?.snapshots) ? raw.snapshots : [];
     normalizeNutrition(merged);
@@ -378,22 +384,29 @@
   }
 
   function completeOnboarding(state, answers, avatar) {
+    const frequency = answers.frequency || answers[3] || state.profile.frequency;
+    const location = answers.location || (['Casa','Gimnasio','Ambos'].includes(answers[3]) ? answers[3] : state.profile.trainingPlace);
+    const trainingPlace = ['Casa','Gimnasio','Ambos'].includes(location) ? location : state.profile.trainingPlace;
+    const isHome = trainingPlace === 'Casa';
+    const isGym = trainingPlace === 'Gimnasio' || trainingPlace === 'Ambos';
     state.profile = {
       ...state.profile,
       avatar: avatar || state.profile.avatar,
       goal: answers[1] || state.profile.goal,
       experience: answers[2] || state.profile.experience,
-      frequency: answers[3] || state.profile.frequency,
-      trainingPlace: ['Casa','Gimnasio'].includes(answers[3]) ? answers[3] : state.profile.trainingPlace,
-      equipmentMode: answers[3] === 'Casa' ? 'home' : answers[3] === 'Gimnasio' ? 'gym' : state.profile.equipmentMode,
-      equipment: answers[3] === 'Casa' ? [...EQUIPMENT_MODE_BY_ID.home.equipment] : answers[3] === 'Gimnasio' ? [...EQUIPMENT_MODE_BY_ID.gym.equipment] : state.profile.equipment,
-      age: answers['Edad'] || state.profile.age,
-      weight: answers['Peso (kg)'] || state.profile.weight,
-      height: answers['Altura (cm)'] || state.profile.height,
+      frequency,
+      trainingPlace,
+      equipmentMode: isHome ? 'home' : isGym ? 'gym' : state.profile.equipmentMode,
+      equipment: isHome ? [...EQUIPMENT_MODE_BY_ID.home.equipment] : isGym ? [...EQUIPMENT_MODE_BY_ID.gym.equipment] : state.profile.equipment,
+      age: answers.age || answers['Edad'] || state.profile.age,
+      weight: answers.weight || answers['Peso (kg)'] || state.profile.weight,
+      height: answers.height || answers['Altura (cm)'] || state.profile.height,
       nutrition: answers[5] || state.profile.nutrition,
       care: answers[6] || state.profile.care
     };
     state.onboardingComplete = true;
+    state.onboardingCompleted = true;
+    state.onboardingDate = new Date().toISOString();
     save(state);
     return state;
   }
@@ -631,6 +644,8 @@
 
   function markLoggedOut(state) {
     state.onboardingComplete = false;
+    state.onboardingCompleted = false;
+    state.onboardingDate = null;
     save(state);
   }
 

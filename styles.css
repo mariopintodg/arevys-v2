@@ -51,6 +51,69 @@ button { font: inherit; }
 .status-legend { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px 14px; margin:4px 16px 0; padding:10px 8px; border:1px solid rgba(226,182,69,.35); border-radius:10px; color:#afb6b1; font-size:8px; }.status-legend b { width:100%; color:#929b96; font-size:7px; letter-spacing:.1em; text-align:center; }.status-legend span { display:flex; align-items:center; gap:5px; }.status-legend i { width:8px; height:8px; border-radius:50%; background:#79dc59; }.status-legend .attention { background:#e7bd55; }.status-legend .fatigue { background:#ee554e; }.recovery-actions { display:flex; gap:8px; margin-top:14px; }.recovery-actions .compact-button { flex:1; }.recovery-actions .button--ghost { flex:1; padding:9px; }
 @media (min-width: 600px) { .app-shell { border-inline: 1px solid rgba(201,164,90,.18); }.intro__copy { right: 8%; left: 8%; bottom: 56px; max-width: 440px; }.avatar-copy { top: 10%; }.intro__rail { right: 32px; } }
 
+/* Correcciones AREVYS v2: legibilidad, validación y estados de selección. */
+:root {
+  --arevys-focus: #f2cb72;
+  --arevys-focus-soft: rgba(242,203,114,.22);
+  --arevys-error: #ef7770;
+  --arevys-text-muted: #b7c0bd;
+  --arevys-control-height: 48px;
+}
+
+.skip-link { position:fixed; z-index:100; top:8px; left:8px; padding:10px 14px; border:1px solid var(--arevys-focus); border-radius:10px; color:#080a0a; background:var(--arevys-focus); font-size:13px; font-weight:800; transform:translateY(-150%); transition:transform .18s ease; }
+.skip-link:focus { transform:translateY(0); }
+
+button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline:2px solid var(--arevys-focus); outline-offset:3px; }
+.intro__rail { top:auto; right:24px; bottom:max(18px,env(safe-area-inset-bottom)); left:24px; display:flex; align-items:center; gap:9px; color:var(--arevys-focus); }
+.intro__rail span { writing-mode:horizontal-tb; transform:none; flex:0 0 auto; font-size:8px; letter-spacing:.14em; }
+.intro__rail i { flex:1; width:auto; height:3px; border-radius:99px; background:rgba(255,255,255,.22); }
+.intro__rail i b { left:0; inset-inline:auto; width:4%; height:100%; border-radius:inherit; background:var(--arevys-focus); box-shadow:0 0 12px var(--arevys-focus); transition:width .16s linear; }
+.intro__rail strong { color:var(--arevys-focus); animation:rise 1.7s ease-in-out infinite; }
+
+.option-group { margin-top:13px; }
+.option-group h2 { margin:0 0 7px; color:var(--arevys-text-muted); font-size:9px; font-weight:850; letter-spacing:.12em; }
+.option-group .options { gap:6px; }
+.option-group .option { flex:1 1 30%; }
+.option.is-selected, .avatar-hit.is-selected--aquiles, .avatar-hit.is-selected--helena, .avatar-names button.is-selected, .avatar-dot.is-active { border-color:var(--arevys-focus)!important; color:var(--arevys-focus)!important; background:rgba(242,203,114,.14)!important; box-shadow:0 0 16px var(--arevys-focus-soft)!important; }
+.option[aria-pressed="true"] { color:var(--arevys-focus); }
+.actions { display:flex; align-items:center; gap:8px; margin-top:14px; }
+.actions .button--primary { flex:1; }
+.button--primary:disabled, .button--primary.is-disabled, .primary-cta:disabled { cursor:not-allowed; opacity:.45; filter:saturate(.55); box-shadow:none; }
+.button--primary:active:not(:disabled), .primary-cta:active:not(:disabled), .secondary-cta:active:not(:disabled), .option:active, .avatar-names button:active { transform:translateY(1px); }
+.btn-back { display:grid; flex:0 0 48px!important; width:48px; min-height:48px; place-items:center; padding:4px!important; border:1px solid rgba(242,203,114,.35)!important; border-radius:50%!important; color:var(--arevys-focus)!important; background:rgba(6,10,11,.78)!important; }
+.btn-back span { font-size:27px; line-height:1; }.btn-back b { display:none; }
+.btn-final-plan { display:block; max-width:250px; margin:15px auto 0; }
+.intro-validation { min-height:15px; margin:7px 0 0; color:var(--arevys-error); font-size:9px; line-height:1.35; }
+.intro__copy--form { bottom:max(140px,calc(env(safe-area-inset-bottom) + 92px)); max-height:calc(100dvh - 190px); overflow-y:auto; padding-bottom:10px; pointer-events:auto; scrollbar-width:thin; scrollbar-color:rgba(242,203,114,.65) transparent; }
+
+.fields-group { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+.field-item { display:block; min-width:0; padding:9px; border:1px solid rgba(255,255,255,.28); border-radius:10px; background:rgba(5,12,15,.66); }
+.field-item > span { display:block; color:var(--arevys-focus); font-size:8px; font-weight:850; letter-spacing:.1em; }
+.field-item > div { display:flex; align-items:baseline; gap:4px; margin-top:4px; }
+.field-item input { width:100%; min-width:0; height:30px; padding:0; border:0; color:#fff; background:transparent; font:700 16px/1 Inter,Arial,sans-serif; }
+.field-item input::placeholder { color:#7c8988; font-size:10px; font-weight:500; }
+.field-item > div b { color:#b9c2be; font-size:8px; font-weight:700; }
+.field-error { display:block; min-height:10px; margin-top:4px; color:var(--arevys-error); font-size:7px; line-height:1.2; }
+.field-item.is-invalid { border-color:rgba(239,119,112,.8); box-shadow:0 0 0 1px rgba(239,119,112,.1); }
+.professional-action { margin:11px 0 0; color:#9da8a5; font-size:9px; line-height:1.4; }
+.professional-action button { padding:0; border:0; color:var(--arevys-focus); background:transparent; font:inherit; font-weight:800; text-decoration:underline; }
+
+.avatar-scroll-hint { margin:4px 0 5px; color:#9ba8a5; font-size:9px; text-align:center; }.avatar-scroll-hint span { color:var(--arevys-focus); font-size:14px; }
+.avatar-dots { display:flex; justify-content:center; gap:7px; margin:3px 0 9px; }
+.avatar-dot { width:8px; height:8px; padding:0; border:1px solid rgba(255,255,255,.45); border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer; }
+.avatar-dot.is-active { width:22px; border-radius:99px; }
+
+/* Secondary cyan remains informative; every selected state uses AREVYS gold. */
+.library-avatar-switch button.is-active, .recovery-switch button.is-active, .body-switch button.is-active, .time-selector button.is-active, .filter-rail button.is-active, .nutrition-tabs button.is-active, .nutrition-meal-types button.is-active, .equipment-mode-card.is-active, .equipment-chip.is-selected, .exercise-rail button.is-active, .rest-clock nav button.is-selected, .history-range button.is-active { border-color:var(--arevys-focus)!important; color:var(--arevys-focus)!important; }
+
+@media (max-width:370px) {
+  .fields-group { gap:5px; }.field-item { padding:7px 6px; }.field-item input { font-size:14px; }.field-item > span { font-size:7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms!important; animation-iteration-count:1!important; scroll-behavior:auto!important; transition-duration:.01ms!important; }
+}
+
 /* Recovery v4 — premium visual system: the values remain DOM/canvas driven. */
 .recovery-screen { padding-inline:22px; background:radial-gradient(ellipse at 50% 31%,rgba(12,42,48,.29) 0,rgba(4,8,9,.2) 29%,transparent 59%); }
 .recovery-screen .dashboard__topbar { margin-bottom:8px; }

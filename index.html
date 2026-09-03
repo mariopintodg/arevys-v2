@@ -1,39 +1,41 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" translate="no">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#05090b">
     <meta name="description" content="AREVYS — Gym y Fitness">
-    <link rel="manifest" href="manifest.webmanifest?v=70">
-    <link rel="stylesheet" href="styles.css?v=70">
-    <link rel="stylesheet" href="arevys-app.css?v=70">
+    <link rel="manifest" href="manifest.webmanifest?v=71">
+    <link rel="stylesheet" href="styles.css?v=71">
+    <link rel="stylesheet" href="arevys-app.css?v=71">
     <title>AREVYS</title>
   </head>
   <body>
+    <a class="skip-link" href="#dashboardContent">Saltar al contenido principal</a>
     <main id="app" class="app-shell">
       <section id="intro" class="intro" aria-label="Configuración inicial AREVYS">
         <img id="introFrame" class="intro__frame" src="assets/intro_frames/frame_000.webp" alt="">
         <div class="intro__shade"></div>
 
         <header class="intro__header">
-          <img src="assets/images/arevys_intro_logo.png" alt="AREVYS">
+          <img src="assets/images/arevys_intro_logo.png" alt="AREVYS" translate="no">
           <span id="stepCount">01 / 08</span>
         </header>
 
         <div id="introBrand" class="intro__brand" aria-hidden="true">
-          <img src="assets/images/arevys_intro_logo.png" alt="">
+          <img src="assets/images/arevys_intro_logo.png" alt="" translate="no">
           <span>GYM Y FITNESS</span>
         </div>
 
-        <aside class="intro__rail" aria-hidden="true">
-          <span>DESLIZA</span>
+        <aside class="intro__rail" aria-label="Progreso de configuración" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span>DESLIZA HACIA ARRIBA</span>
           <i><b id="railFill"></b></i>
-          <strong>↑</strong>
+          <strong aria-hidden="true">↑</strong>
         </aside>
 
         <div id="introCopy" class="intro__copy"></div>
-        <div id="introHitArea" class="intro__gesture" aria-label="Desliza para avanzar"></div>
+        <div id="introHitArea" class="intro__gesture" role="button" tabindex="0" aria-label="Desliza para avanzar"></div>
       </section>
 
       <section id="home" class="home" hidden aria-live="polite">
@@ -42,7 +44,7 @@
       </section>
     </main>
     <div id="toast" class="app-toast" role="status" aria-live="polite"></div>
-    <script src="arevys-core.js?v=70"></script>
-    <script src="app.js?v=70"></script>
+    <script src="arevys-core.js?v=71"></script>
+    <script src="app.js?v=71"></script>
   </body>
 </html>

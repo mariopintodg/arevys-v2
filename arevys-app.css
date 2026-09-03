@@ -907,3 +907,28 @@ button { touch-action:manipulation; }
   .today-screen .today-metrics { width:42%; }
   .today-screen .today-metric { grid-template-columns:27px minmax(0,1fr); padding-right:7px; }
 }
+
+/* Correcciones AREVYS v2: estados vacíos y edición clara del onboarding. */
+.onboarding-settings { margin-top:16px; padding:16px; border:1px solid rgba(128,227,241,.18); border-radius:18px; background:radial-gradient(circle at 0 0,rgba(75,197,216,.1),transparent 36%),linear-gradient(145deg,rgba(14,23,25,.95),rgba(7,10,11,.95)); }
+.onboarding-settings > header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.onboarding-settings > header h2 { margin:5px 0 4px; color:#eff2ee; font-size:20px; }.onboarding-settings > header p { margin:0; color:#879693; font-size:10px; line-height:1.4; }.onboarding-settings > header > i { display:grid; flex:0 0 37px; width:37px; height:37px; padding:9px; place-items:center; border:1px solid rgba(228,189,101,.3); border-radius:11px; color:var(--arevys-gold); }
+.onboarding-settings__list { display:grid; gap:7px; margin-top:14px; }
+.onboarding-settings__list > button { display:grid; grid-template-columns:27px minmax(0,1fr) auto; gap:9px; align-items:center; width:100%; padding:9px 0; border:0; border-top:1px solid rgba(255,255,255,.08); color:#e8eeea; background:transparent; text-align:left; }
+.onboarding-settings__index { display:grid; width:25px; height:25px; place-items:center; border:1px solid rgba(228,189,101,.35); border-radius:50%; color:var(--arevys-gold); font-size:9px; font-weight:850; }
+.onboarding-settings__list b,.onboarding-settings__list strong,.onboarding-settings__list small { display:block; }.onboarding-settings__list b { color:var(--arevys-gold); font-size:8px; letter-spacing:.12em; }.onboarding-settings__list strong { margin-top:2px; overflow:hidden; color:#e9eeea; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }.onboarding-settings__list small { margin-top:2px; color:#7d8b88; font-size:8px; }.onboarding-settings__list em { color:#9ca9a5; font-size:8px; font-style:normal; font-weight:850; white-space:nowrap; }
+.onboarding-settings > .secondary-cta { min-height:45px; margin-top:10px; font-size:8px; }
+.dashboard__back.btn-back { flex:0 0 38px!important; width:38px; min-height:38px; border:1px solid rgba(229,189,101,.32)!important; color:var(--arevys-gold)!important; background:rgba(9,12,13,.5)!important; }
+.signal-card.is-empty { min-height:112px; border-color:rgba(228,189,101,.2); background:linear-gradient(145deg,rgba(20,22,19,.94),rgba(8,10,10,.94)); }
+.signal-card.is-empty > i { color:var(--arevys-gold); }.signal-card.is-empty strong { margin-top:7px; color:#e8ece8; font-size:13px; }.signal-card.is-empty small { max-width:105px; color:#9aa5a1; font-size:8px; line-height:1.35; white-space:normal; }.signal-card .empty-action { margin-top:7px; padding:0; border:0; color:var(--arevys-gold); background:transparent; font-size:7px; font-weight:900; letter-spacing:.07em; }
+.profile-screen .onboarding-settings { margin-bottom:15px; }
+
+/* Selecciones: dorado AREVYS; cian solo comunica información. */
+.library-avatar-switch button.is-active, .recovery-switch button.is-active, .body-switch button.is-active, .time-selector button.is-active, .filter-rail button.is-active, .nutrition-tabs button.is-active, .nutrition-meal-types button.is-active, .equipment-mode-card.is-active, .equipment-chip.is-selected, .exercise-rail button.is-active, .rest-clock nav button.is-selected, .history-range button.is-active { border-color:var(--arevys-gold)!important; color:var(--arevys-gold)!important; }
+
+@media (max-width:370px) {
+  .onboarding-settings { padding:13px; }.onboarding-settings__list em { font-size:7px; }.onboarding-settings__list strong { font-size:11px; }.signal-card.is-empty small { font-size:7px; }
+}
+
+.dashboard__title, .exercise-plan-list b, .library-card__main h2 { overflow:hidden; text-overflow:ellipsis; }
+.dashboard__title { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow-wrap:anywhere; }
+.exercise-plan-list b, .library-card__main h2 { display:block; white-space:nowrap; }

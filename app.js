@@ -7,14 +7,15 @@ const steps = [
   { eyebrow: 'AREVYS / TU SISTEMA', title: 'Tu próxima versión\ncomienza aquí.', description: 'Construyamos un plan que se adapte a tu cuerpo, tu ritmo y tu realidad.', action: 'CONFIGURAR MI PLAN' },
   { eyebrow: '01 / OBJETIVO', title: '¿Qué quieres\nconseguir?', description: 'Tu objetivo define el punto de partida de tu evolución.', options: ['Perder grasa','Ganar músculo','Aumentar fuerza','Mejorar rendimiento'] },
   { eyebrow: '02 / PUNTO DE PARTIDA', title: '¿Dónde estás\nhoy?', description: 'Así ajustamos la intensidad para que avances con confianza.', options: ['Estoy comenzando','Estoy retomando','Entreno regularmente','Nivel avanzado'] },
-  { eyebrow: '03 / RUTINA', title: 'Diseñemos tu\nsemana ideal.', description: 'Elige tu frecuencia y el espacio donde entrenas.', options: ['2–3 días','4 días','5+ días','Casa','Gimnasio'] },
+  { eyebrow: '03 / RUTINA', title: 'Diseñemos tu\nsemana ideal.', description: 'Elige por separado cuántos días entrenas y dónde lo harás.', groups: [{ key: 'frequency', label: 'FRECUENCIA SEMANAL', options: ['2–3 días','4 días','5+ días'] }, { key: 'location', label: 'LUGAR DE ENTRENAMIENTO', options: ['Casa','Gimnasio','Ambos'] }] },
   { eyebrow: '04 / TUS DATOS', title: 'Conozcamos tu\npunto de partida.', description: 'Estos datos permiten personalizar cargas, métricas y objetivos.', fields: true },
   { eyebrow: '05 / NUTRICIÓN', title: '¿Cómo alimentas\ntu evolución?', description: 'Tu plan debe encajar con tus hábitos y preferencias.', options: ['Sin dieta específica','Omnívora','Vegetariana','Vegana'] },
-  { eyebrow: '06 / CUIDADO', title: 'Entrena fuerte.\nEntrena con inteligencia.', description: 'Cuéntanos si debemos considerar una lesión o limitación.', options: ['Lesiones','Limitaciones','Nada que informar','Hablar con un profesional'] },
+  { eyebrow: '06 / CUIDADO', title: 'Entrena fuerte.\nEntrena con inteligencia.', description: 'Cuéntanos si debemos considerar una lesión o limitación.', options: ['Lesiones','Limitaciones','Ambas','Nada que informar'], professionalAction: true },
   { eyebrow: '07 / TU AVATAR', title: 'Elige quién\nacompañará tu camino.', description: 'Tu plan ya tiene un mapa. Ahora elige quién lo hará avanzar.', avatar: true }
 ];
 
-const introState = { progress: 0, target: 0, step: 0, answers: {}, avatar: appState.profile.avatar || 'Helena', raf: 0, frame: -1 };
+const introState = { progress: 0, target: 0, step: 0, answers: {}, avatar: appState.profile.avatar || 'Helena', raf: 0, frame: -1, startedAt: 0, stepStartedAt: 0 };
+let introRenderToken = 0;
 const frame = document.querySelector('#introFrame');
 const copy = document.querySelector('#introCopy');
 const brand = document.querySelector('#introBrand');
@@ -28,20 +29,86 @@ const appNav = document.querySelector('#appNav');
 const toast = document.querySelector('#toast');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[character]);
 
+function trackEvent(name, properties = {}) {
+  console.log('[AREVYS_ANALYTICS]', name, properties);
+}
+
+const introFields = [
+  { key: 'age', label: 'EDAD', unit: 'años', min: 12, max: 100, step: 1, inputmode: 'numeric', placeholder: 'Ej: 35' },
+  { key: 'weight', label: 'PESO', unit: 'kg', min: 30, max: 300, step: 0.1, inputmode: 'decimal', placeholder: 'Ej: 72.5' },
+  { key: 'height', label: 'ALTURA', unit: 'cm', min: 100, max: 250, step: 1, inputmode: 'numeric', placeholder: 'Ej: 175' }
+];
+
+function introFieldValue(key) {
+  const legacy = { age: 'Edad', weight: 'Peso (kg)', height: 'Altura (cm)' }[key];
+  return introState.answers[key] ?? introState.answers[legacy] ?? '';
+}
+
+function validIntroField(field, value) {
+  const number = Number(value);
+  return value !== '' && Number.isFinite(number) && number >= field.min && number <= field.max;
+}
+
+function introStepIsValid(stepIndex = introState.step) {
+  const data = steps[stepIndex];
+  if (data.fields) return introFields.every(field => validIntroField(field, introFieldValue(field.key)));
+  if (data.groups) return data.groups.every(group => Boolean(introState.answers[group.key]));
+  if (data.options) return Boolean(introState.answers[stepIndex]);
+  return true;
+}
+
+function introValidationMessage() {
+  const data = steps[introState.step];
+  if (!data) return '';
+  if (data.groups) return 'Selecciona una frecuencia y un lugar para continuar.';
+  if (data.fields) return 'Completa edad, peso y altura con valores válidos para continuar.';
+  if (data.options) return 'Elige una opción para continuar.';
+  return '';
+}
+
+function refreshIntroValidation(message = '') {
+  const next = copy.querySelector('[data-next]');
+  if (next) {
+    const disabled = !introStepIsValid();
+    next.disabled = disabled;
+    next.classList.toggle('is-disabled', disabled);
+    next.setAttribute('aria-disabled', String(disabled));
+  }
+  const validation = copy.querySelector('[data-intro-validation]');
+  if (validation) validation.textContent = message;
+  copy.querySelectorAll('[data-field-input]').forEach(input => {
+    const definition = introFields.find(field => field.key === input.dataset.fieldInput);
+    const invalid = input.value !== '' && !validIntroField(definition, input.value);
+    const item = input.closest('.field-item');
+    if (item) item.classList.toggle('is-invalid', invalid);
+    const error = item?.querySelector('.field-error');
+    if (error) error.textContent = invalid ? `Usa ${definition.min}–${definition.max} ${definition.unit}.` : '';
+  });
+}
+
+function introChoice(option, selected, key = introState.step) {
+  return `<button class="option ${selected ? 'is-selected' : ''}" data-option="${esc(option)}" data-option-key="${esc(key)}" aria-pressed="${selected}">${esc(option)}${selected ? ' ✓' : ''}</button>`;
+}
+
 function renderCopy() {
   const data = steps[introState.step];
+  const renderToken = ++introRenderToken;
   copy.classList.add('is-changing');
   window.setTimeout(() => {
-    const choices = (data.options || []).map(option => `<button class="option ${introState.answers[introState.step] === option ? 'is-selected' : ''}" data-option="${esc(option)}">${esc(option)}${introState.answers[introState.step] === option ? ' ✓' : ''}</button>`).join('');
-    const fields = data.fields ? ['Edad','Peso (kg)','Altura (cm)'].map(label => `<button class="data-field" data-field="${label}"><b>${label.toUpperCase()}</b><span>${introState.answers[label] || 'TOCAR PARA AÑADIR'}</span></button>`).join('') : '';
-    const actions = data.avatar ? '<button class="button button--primary" data-finish>VER MI PLAN</button>' : `<div class="actions">${introState.step ? '<button class="button button--ghost" data-back>ATRÁS</button>' : ''}<button class="button button--primary" data-next>${data.action || 'CONTINUAR →'}</button></div>`;
+    if (renderToken !== introRenderToken) return;
+    const choices = (data.options || []).map(option => introChoice(option, introState.answers[introState.step] === option)).join('');
+    const groups = (data.groups || []).map(group => `<section class="option-group" aria-labelledby="group-${esc(group.key)}"><h2 id="group-${esc(group.key)}">${esc(group.label)}</h2><div class="options">${group.options.map(option => introChoice(option, introState.answers[group.key] === option, group.key)).join('')}</div></section>`).join('');
+    const fields = data.fields ? introFields.map(field => { const value = introFieldValue(field.key); const invalid = value !== '' && !validIntroField(field, value); return `<label class="field-item ${invalid ? 'is-invalid' : ''}"><span class="field-label">${field.label}</span><div><input type="number" data-field-input="${field.key}" value="${esc(value)}" min="${field.min}" max="${field.max}" step="${field.step}" inputmode="${field.inputmode}" placeholder="${field.placeholder}" aria-label="${field.label.toLowerCase()}" aria-describedby="${field.key}-error" autocomplete="off"><b>${field.unit}</b></div><small id="${field.key}-error" class="field-error">${invalid ? `Usa ${field.min}–${field.max} ${field.unit}.` : ''}</small></label>`; }).join('') : '';
+    const validation = `<p class="intro-validation" data-intro-validation aria-live="polite"></p>`;
+    const actions = data.avatar ? '<button class="button button--primary btn-final-plan" data-finish>VER MI PLAN</button>' : `<div class="actions">${introState.step ? '<button class="button button--ghost btn-back" data-back aria-label="Volver al paso anterior"><span aria-hidden="true">‹</span><b>ATRÁS</b></button>' : ''}<button class="button button--primary" data-next>${data.action || 'CONTINUAR →'}</button></div>${validation}`;
     if (data.avatar) {
       copy.className = 'intro__copy avatar-copy';
-      copy.innerHTML = `<div class="eyebrow">${data.eyebrow}</div><h1 class="title">${data.title}</h1><p class="avatar-hint">Toca un avatar para seleccionarlo.</p><div class="avatars"><img src="assets/images/avatars_arevys_v5.png" alt="Aquiles y Helena"><button class="avatar-hit ${introState.avatar === 'Aquiles' ? 'is-selected--aquiles' : ''}" data-avatar="Aquiles" aria-label="Elegir Aquiles"></button><button class="avatar-hit ${introState.avatar === 'Helena' ? 'is-selected--helena' : ''}" data-avatar="Helena" aria-label="Elegir Helena"></button></div><div class="avatar-names"><button class="aquiles ${introState.avatar === 'Aquiles' ? 'is-selected' : ''}" data-avatar="Aquiles">${introState.avatar === 'Aquiles' ? '✓ ' : ''}AQUILES</button><button class="helena ${introState.avatar === 'Helena' ? 'is-selected' : ''}" data-avatar="Helena">${introState.avatar === 'Helena' ? '✓ ' : ''}HELENA</button></div>${actions}`;
+      copy.innerHTML = `<div class="eyebrow">${data.eyebrow}</div><h1 class="title">${data.title}</h1><p class="avatar-hint">Toca un avatar para seleccionarlo.</p><div class="avatars" data-avatar-track><img src="assets/images/avatars_arevys_v5.png" alt="Aquiles y Helena" loading="lazy"><button class="avatar-hit ${introState.avatar === 'Aquiles' ? 'is-selected--aquiles' : ''}" data-avatar="Aquiles" aria-label="Elegir Aquiles"></button><button class="avatar-hit ${introState.avatar === 'Helena' ? 'is-selected--helena' : ''}" data-avatar="Helena" aria-label="Elegir Helena"></button></div><p class="avatar-scroll-hint">Desliza para ver más opciones <span aria-hidden="true">→</span></p><div class="avatar-dots" role="tablist" aria-label="Seleccionar avatar"><button class="avatar-dot ${introState.avatar === 'Aquiles' ? 'is-active' : ''}" data-avatar-dot="Aquiles" role="tab" aria-selected="${introState.avatar === 'Aquiles'}" aria-label="Mostrar Aquiles"></button><button class="avatar-dot ${introState.avatar === 'Helena' ? 'is-active' : ''}" data-avatar-dot="Helena" role="tab" aria-selected="${introState.avatar === 'Helena'}" aria-label="Mostrar Helena"></button></div><div class="avatar-names"><button class="aquiles ${introState.avatar === 'Aquiles' ? 'is-selected' : ''}" data-avatar="Aquiles">${introState.avatar === 'Aquiles' ? '✓ ' : ''}AQUILES</button><button class="helena ${introState.avatar === 'Helena' ? 'is-selected' : ''}" data-avatar="Helena">${introState.avatar === 'Helena' ? '✓ ' : ''}HELENA</button></div>${actions}`;
     } else {
-      copy.className = 'intro__copy';
-      copy.innerHTML = `<div class="eyebrow">${data.eyebrow}</div><h1 class="title">${data.title}</h1><p class="description">${data.description}</p>${choices ? `<div class="options">${choices}</div>` : ''}${fields ? `<div class="data-grid">${fields}</div>` : ''}${actions}`;
+      copy.className = `intro__copy ${data.fields || data.groups ? 'intro__copy--form' : ''}`;
+      copy.innerHTML = `<div class="eyebrow">${data.eyebrow}</div><h1 class="title">${data.title}</h1><p class="description">${data.description}</p>${choices ? `<div class="options">${choices}</div>` : ''}${groups}${fields ? `<div class="data-grid fields-group">${fields}</div>` : ''}${data.professionalAction ? '<p class="professional-action">¿Prefieres atención personalizada? <button type="button" data-professional-chat>Hablar con un profesional →</button></p>' : ''}${actions}`;
     }
+    refreshIntroValidation();
     copy.classList.remove('is-changing');
   }, 120);
 }
@@ -57,18 +124,31 @@ function updateIntro() {
     frame.src = `assets/intro_frames/frame_${String(nextFrame).padStart(3,'0')}.webp`;
     warmFrames(nextFrame);
   }
-  rail.style.height = `${Math.max(4, introState.progress * 100)}%`;
+  rail.style.width = `${Math.max(4, introState.progress * 100)}%`;
+  rail.style.height = '100%';
+  rail.closest('[role="progressbar"]')?.setAttribute('aria-valuenow', String(Math.round(introState.progress * 100)));
   brand.style.opacity = Math.max(0, 1 - introState.progress * 9);
   if (nextStep !== introState.step) {
+    trackEvent('onboarding_step_view', { step: nextStep + 1, total: steps.length });
     introState.step = nextStep;
+    introState.stepStartedAt = Date.now();
     count.textContent = `${String(nextStep + 1).padStart(2,'0')} / 08`;
+    syncUrlState();
     vibrate(10);
     renderCopy();
   }
 }
 
 function moveIntroTo(step) {
-  introState.target = Math.max(0, Math.min(0.94, (step + 0.5) / steps.length));
+  const targetStep = Math.max(0, Math.min(steps.length - 1, step));
+  if (targetStep > introState.step && !introStepIsValid()) {
+    refreshIntroValidation(introValidationMessage());
+    vibrate(8);
+    return;
+  }
+  if (targetStep > introState.step) trackEvent('onboarding_continue', { fromStep: introState.step + 1, durationMs: Date.now() - introState.stepStartedAt });
+  if (targetStep < introState.step) trackEvent('onboarding_back', { fromStep: introState.step + 1 });
+  introState.target = Math.max(0, Math.min(0.94, (targetStep + 0.5) / steps.length));
   if (!introState.raf) introState.raf = requestAnimationFrame(updateIntro);
 }
 
@@ -83,16 +163,31 @@ function warmFrames(center) {
 copy.addEventListener('click', event => {
   const option = event.target.closest('[data-option]');
   const avatar = event.target.closest('[data-avatar]');
-  const field = event.target.closest('[data-field]');
-  if (option) { introState.answers[introState.step] = option.dataset.option; renderCopy(); }
-  if (avatar) { introState.avatar = avatar.dataset.avatar; vibrate(15); renderCopy(); }
-  if (field) {
-    const result = window.prompt(`Ingresa ${field.dataset.field}`, introState.answers[field.dataset.field] || '');
-    if (result?.trim()) { introState.answers[field.dataset.field] = result.trim(); renderCopy(); }
+  const dot = event.target.closest('[data-avatar-dot]');
+  if (option) {
+    const key = option.dataset.optionKey || String(introState.step);
+    introState.answers[key] = option.dataset.option;
+    trackEvent('onboarding_option_select', { step: introState.step + 1, option: option.dataset.option });
+    renderCopy();
   }
+  if (avatar || dot) { introState.avatar = (avatar || dot).dataset.avatar || (avatar || dot).dataset.avatarDot; trackEvent('onboarding_avatar_select', { avatar: introState.avatar }); vibrate(15); renderCopy(); }
+  if (event.target.closest('[data-professional-chat]')) { openProfessionalChat(); return; }
   if (event.target.closest('[data-next]')) moveIntroTo(Math.min(steps.length - 1, introState.step + 1));
   if (event.target.closest('[data-back]')) moveIntroTo(Math.max(0, introState.step - 1));
   if (event.target.closest('[data-finish]')) finishIntro();
+});
+
+copy.addEventListener('input', event => {
+  const field = event.target.closest('[data-field-input]');
+  if (!field) return;
+  introState.answers[field.dataset.fieldInput] = field.value;
+  refreshIntroValidation();
+});
+
+copy.addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  const field = event.target.closest('[data-field-input]');
+  if (field && !introStepIsValid()) { event.preventDefault(); refreshIntroValidation(introValidationMessage()); }
 });
 
 let startY = 0;
@@ -100,7 +195,10 @@ let startTarget = 0;
 hit.addEventListener('pointerdown', event => { startY = event.clientY; startTarget = introState.target; hit.setPointerCapture(event.pointerId); });
 hit.addEventListener('pointermove', event => {
   if (!hit.hasPointerCapture(event.pointerId)) return;
-  introState.target = Math.max(0, Math.min(0.94, startTarget + (startY - event.clientY) / window.innerHeight * 0.76));
+  const proposedTarget = Math.max(0, Math.min(0.94, startTarget + (startY - event.clientY) / window.innerHeight * 0.76));
+  const proposedStep = Math.min(steps.length - 1, Math.floor(proposedTarget * steps.length));
+  if (proposedStep > introState.step && (!introStepIsValid() || proposedStep > introState.step + 1)) return;
+  introState.target = proposedTarget;
   if (!introState.raf) introState.raf = requestAnimationFrame(updateIntro);
 });
 function endIntroGesture(event) {
@@ -115,6 +213,10 @@ window.addEventListener('wheel', event => {
   event.preventDefault();
   moveIntroTo(introState.step + (event.deltaY > 0 ? 1 : -1));
 }, { passive: false });
+hit.addEventListener('keydown', event => {
+  if (event.key === 'ArrowDown' || event.key === 'PageDown') { event.preventDefault(); moveIntroTo(introState.step + 1); }
+  if (event.key === 'ArrowUp' || event.key === 'PageUp') { event.preventDefault(); moveIntroTo(introState.step - 1); }
+});
 
 const ui = {
   view: appState.activeWorkout ? 'workout' : 'today',
@@ -128,6 +230,24 @@ const ui = {
 };
 
 const bodyBaseCache = new Map();
+const urlViews = new Set(['today','plan','workout','result','recovery','evolution','library','nutrition','ai','more','profile']);
+function syncUrlState() {
+  const params = new URLSearchParams(location.search);
+  if (intro.hidden) {
+    params.set('view', ui.view);
+    if (ui.view === 'nutrition') params.set('nutritionTab', ui.nutritionTab); else params.delete('nutritionTab');
+    params.delete('introStep');
+  } else {
+    params.set('introStep', String(introState.step + 1));
+    params.delete('view'); params.delete('nutritionTab');
+  }
+  history.replaceState(null, '', `${location.pathname}?${params.toString()}${location.hash}`);
+}
+function restoreUrlState() {
+  const params = new URLSearchParams(location.search);
+  if (urlViews.has(params.get('view'))) ui.view = params.get('view');
+  if (ui.view === 'nutrition' && ['summary','explore','recipes','day','log'].includes(params.get('nutritionTab'))) ui.nutritionTab = params.get('nutritionTab');
+}
 const LOCAL_LIBRARY_PAGE_SIZE = 24;
 const localLibrary = { status: 'loading', connected: false, source: '', total: 0, exercises: [], error: '' };
 const nutritionRemote = { foodStatus: 'idle', foods: [], foodError: '', recipeStatus: 'idle', recipes: [], recipeError: '' };
@@ -327,17 +447,20 @@ function navGroup(view) {
 function renderNav() {
   const active = navGroup(ui.view);
   const items = [['today','today','Hoy'],['plan','plan','Entrenar'],['nutrition','nutrition','Nutrición'],['recovery','body','Cuerpo'],['evolution','evolution','Evolución'],['more','more','Más']];
-  appNav.innerHTML = items.map(([view,symbol,label]) => `<button class="app-nav__item ${active === view ? 'is-active' : ''}" data-dashboard="${view}"><i>${icon(symbol)}</i><span>${label}</span></button>`).join('');
+  appNav.innerHTML = items.map(([view,symbol,label]) => `<button class="app-nav__item ${active === view ? 'is-active' : ''}" data-dashboard="${view}" aria-current="${active === view ? 'page' : 'false'}" aria-label="Abrir ${label}"><i aria-hidden="true">${icon(symbol)}</i><span>${label}</span></button>`).join('');
 }
 function dashboardHeader(back = null) {
   const avatar = appState.profile.avatar === 'Aquiles' ? 'is-aquiles' : 'is-helena';
-  return `<header class="dashboard__topbar">${back ? `<button class="dashboard__back" data-dashboard="${back}" aria-label="Volver">‹</button>` : '<span class="dashboard__spacer"></span>'}<img src="assets/images/arevys_intro_logo.png" alt="AREVYS"><button class="dashboard__avatar ${avatar}" data-dashboard="profile" aria-label="Abrir perfil"><span></span></button></header>`;
+  return `<header class="dashboard__topbar">${back ? `<button class="dashboard__back btn-back" data-dashboard="${back}" aria-label="Volver">‹</button>` : '<span class="dashboard__spacer"></span>'}<img src="assets/images/arevys_intro_logo.png" alt="AREVYS"><button class="dashboard__avatar ${avatar}" data-dashboard="profile" aria-label="Abrir perfil"><span></span></button></header>`;
 }
 function profileName() { return appState.profile.name?.trim() || appState.profile.avatar || 'Atleta'; }
 function formatDate(timestamp, options = {}) { return new Intl.DateTimeFormat('es-CL', { day:'numeric', month:'short', ...options }).format(new Date(timestamp)); }
 function formatDuration(minutes) { return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`; }
 function screenTitle(eyebrow,title,subtitle) { return `<p class="dashboard__eyebrow">${eyebrow}</p><h1 class="dashboard__title">${title}</h1>${subtitle ? `<p class="dashboard__subtitle">${subtitle}</p>` : ''}`; }
-function signalCard(iconName,label,value,note,status='neutral') { return `<article class="signal-card" data-state="${status}"><i>${icon(iconName)}</i><div><span>${label}</span><strong>${value}</strong><small>${note}</small></div></article>`; }
+function signalCard(iconName,label,value,note,status='neutral') {
+  const empty = value === '—' || note === 'Sin dato' || note === 'Sin check-in';
+  return `<article class="signal-card ${empty ? 'is-empty' : ''}" data-state="${status}"><i>${icon(iconName)}</i><div><span>${label}</span>${empty ? '<strong>Sin registro</strong><small>Completa tu check-in para darle contexto a tu día.</small><button class="empty-action" data-open-checkin>HACER CHECK-IN</button>' : `<strong>${value}</strong><small>${note}</small>`}</div></article>`;
+}
 function todayMetric(iconName,label,value,note,status='neutral') { return `<div class="today-metric" data-state="${status}"><i>${icon(iconName)}</i><span><b>${label}</b><strong>${value}</strong><small>${note}</small></span><em></em></div>`; }
 
 const NUTRITION_FALLBACK_FOODS = [
@@ -553,7 +676,7 @@ function libraryLayout() {
   const cards = exercises.map(exercise => {
     const expanded = ui.librarySelected === exercise.id;
     const media = exercise.mediaUrl
-      ? (exercise.mediaType === 'image' ? `<img src="${esc(exercise.mediaUrl)}" alt="Demostración de ${esc(exercise.name)}">` : `<video src="${esc(exercise.mediaUrl)}" muted loop autoplay playsinline controls preload="metadata" aria-label="Demostración de ${esc(exercise.name)}"></video>`)
+      ? (exercise.mediaType === 'image' ? `<img src="${esc(exercise.mediaUrl)}" alt="Demostración de ${esc(exercise.name)}" loading="lazy" decoding="async">` : `<video src="${esc(exercise.mediaUrl)}" muted loop autoplay playsinline controls preload="metadata" aria-label="Demostración de ${esc(exercise.name)}"></video>`)
       : '';
     return `<article class="library-card ${expanded ? 'is-expanded' : ''}"><button class="library-card__main" data-library-select="${exercise.id}"><i>${muscleIcon(exercise.primary[0])}</i><div><span>${exercise.group.toUpperCase()} · ${exercise.source === 'local' ? 'VIDEO LOCAL' : exercise.level.toUpperCase()}</span><h2>${esc(exercise.name)}</h2><p>${exercise.sets} series · ${exercise.reps} · ${exercise.equipment}</p></div><strong>${expanded ? '−' : '+'}</strong></button>${expanded ? `<div class="library-card__detail">${media ? `<div class="library-card__media">${media}<span>DEMOSTRACIÓN · ${exercise.avatar.toUpperCase()}</span></div>` : ''}<p><b>CONEXIÓN CON TU CUERPO</b>${esc(exercise.cue)}</p><div class="muscle-tags">${[...exercise.primary,...exercise.secondary].map(id => `<span>${Core.MUSCLES[id].name}</span>`).join('')}</div><button class="primary-cta" data-start-exercise="${exercise.id}">${icon('play')} ENTRENAR ESTE EJERCICIO</button></div>` : ''}</article>`;
   }).join('');
@@ -607,17 +730,31 @@ function planEquipmentContext(plan) {
   return `<section class="plan-equipment-context"><i>${equipmentIcon(context.modeId)}</i><div><span class="micro-label">CONTEXTO DEL PLAN</span><strong>${esc(context.label)}</strong><small>${esc(context.selectedLabels.slice(0,5).join(' · '))}</small></div><button data-dashboard="profile">EDITAR</button></section>`;
 }
 
+function onboardingSettingsSection(profile) {
+  const location = profile.trainingPlace || 'Gimnasio';
+  const care = ['Lesiones','Limitaciones','Ambas','Nada que informar'].includes(profile.care) ? profile.care : 'Nada que informar';
+  const items = [
+    ['1', 'OBJETIVO', profile.goal, 'Objetivo principal'],
+    ['2', 'EXPERIENCIA', profile.experience, 'Punto de partida'],
+    ['3', 'RUTINA', `${profile.frequency} · ${location}`, 'Frecuencia y lugar'],
+    ['4', 'DATOS', `${profile.age || '—'} años · ${profile.weight || '—'} kg · ${profile.height || '—'} cm`, 'Medidas de referencia'],
+    ['5', 'NUTRICIÓN', profile.nutrition, 'Preferencia alimentaria'],
+    ['6', 'CUIDADO', care, 'Lesiones o limitaciones']
+  ];
+  return `<section class="onboarding-settings" aria-labelledby="onboarding-settings-title"><header><div><span class="micro-label">CONFIGURACIÓN PERSONAL</span><h2 id="onboarding-settings-title">Perfil y objetivos</h2><p>Puedes revisar cualquier respuesta del inicio sin perder tu historial.</p></div><i>${icon('plan')}</i></header><div class="onboarding-settings__list">${items.map(([step,label,value,copy]) => `<button data-edit-onboarding="${step}" aria-label="Editar ${label.toLowerCase()}"><span class="onboarding-settings__index">${step}</span><span><b>${label}</b><strong>${esc(value)}</strong><small>${copy}</small></span><em>EDITAR&nbsp; →</em></button>`).join('')}</div><button class="secondary-cta" data-replay-intro>VOLVER A HACER LA CONFIGURACIÓN COMPLETA</button></section>`;
+}
+
 function profileLayout() {
   const profile = appState.profile;
   const connections = [['appleHealth','Apple Health'],['googleFit','Google Fit'],['wearable','Reloj / wearable']];
-  return `<article class="dashboard profile-screen">${dashboardHeader('more')}${screenTitle('PERFIL / PUNTO DE PARTIDA','Tu sistema personal.','Objetivos y preferencias que contextualizan las decisiones.')}<section class="profile-identity"><div class="profile-avatar ${profile.avatar === 'Aquiles' ? 'is-aquiles' : 'is-helena'}"><span></span></div><div><span>GEMELO DIGITAL</span><h2>${profile.avatar}</h2><p>${profile.goal}</p></div></section><div class="section-heading"><span>DATOS PRINCIPALES</span><small>Editables</small></div><section class="profile-form"><label><span>NOMBRE</span><input value="${esc(profile.name)}" placeholder="Tu nombre" data-profile-field="name"></label><label><span>OBJETIVO</span><select data-profile-field="goal">${['Perder grasa','Ganar músculo','Aumentar fuerza','Mejorar rendimiento'].map(value => `<option ${profile.goal === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label><span>FRECUENCIA</span><select data-profile-field="frequency">${['2–3 días','4 días','5+ días'].map(value => `<option ${profile.frequency === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label><span>EXPERIENCIA</span><select data-profile-field="experience">${['Estoy comenzando','Estoy retomando','Entreno regularmente','Nivel avanzado'].map(value => `<option ${profile.experience === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label></section>${equipmentPreferenceSection(profile)}<div class="section-heading"><span>CONEXIONES</span><small>Preparadas para la siguiente etapa</small></div><section class="connections">${connections.map(([key,label]) => `<button data-connection="${key}"><i>${icon('link')}</i><span><b>${label}</b><small>${appState.connections[key] ? 'Conectado' : 'No conectado'}</small></span><em class="${appState.connections[key] ? 'is-on' : ''}"></em></button>`).join('')}</section><section class="profile-actions"><button class="secondary-cta" data-replay-intro>VER INTRO NUEVAMENTE</button><button class="danger-link" data-logout>CERRAR SESIÓN LOCAL</button></section><p class="version-note">AREVYS V2 · MOTOR LOCAL ${Core.VERSION} · Los datos permanecen en este dispositivo.</p></article>`;
+  return `<article class="dashboard profile-screen">${dashboardHeader('more')}${screenTitle('PERFIL / PUNTO DE PARTIDA','Tu sistema personal.','Objetivos y preferencias que contextualizan las decisiones.')}<section class="profile-identity"><div class="profile-avatar ${profile.avatar === 'Aquiles' ? 'is-aquiles' : 'is-helena'}"><span></span></div><div><span>GEMELO DIGITAL</span><h2>${profile.avatar}</h2><p>${profile.goal}</p></div></section><div class="section-heading"><span>DATOS PRINCIPALES</span><small>Editables</small></div><section class="profile-form"><label><span>NOMBRE</span><input value="${esc(profile.name)}" placeholder="Tu nombre" data-profile-field="name"></label><label><span>OBJETIVO</span><select data-profile-field="goal">${['Perder grasa','Ganar músculo','Aumentar fuerza','Mejorar rendimiento'].map(value => `<option ${profile.goal === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label><span>FRECUENCIA</span><select data-profile-field="frequency">${['2–3 días','4 días','5+ días'].map(value => `<option ${profile.frequency === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label><label><span>EXPERIENCIA</span><select data-profile-field="experience">${['Estoy comenzando','Estoy retomando','Entreno regularmente','Nivel avanzado'].map(value => `<option ${profile.experience === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label></section>${equipmentPreferenceSection(profile)}${onboardingSettingsSection(profile)}<div class="section-heading"><span>CONEXIONES</span><small>Preparadas para la siguiente etapa</small></div><section class="connections">${connections.map(([key,label]) => `<button data-connection="${key}"><i>${icon('link')}</i><span><b>${label}</b><small>${appState.connections[key] ? 'Conectado' : 'No conectado'}</small></span><em class="${appState.connections[key] ? 'is-on' : ''}"></em></button>`).join('')}</section><section class="profile-actions"><button class="danger-link" data-logout>CERRAR SESIÓN LOCAL</button></section><p class="version-note">AREVYS V2 · MOTOR LOCAL ${Core.VERSION} · Los datos permanecen en este dispositivo.</p></article>`;
 }
 
 function libraryGallery(exercises) {
   const picks = exercises.filter(exercise => exercise.mediaUrl).slice(0,5);
   if (!picks.length) return '';
   const media = exercise => exercise.mediaType === 'image'
-    ? `<img src="${esc(exercise.mediaUrl)}" alt="Vista previa de ${esc(exercise.name)}">`
+    ? `<img src="${esc(exercise.mediaUrl)}" alt="Vista previa de ${esc(exercise.name)}" loading="lazy" decoding="async">`
     : `<video src="${esc(exercise.mediaUrl)}" muted loop autoplay playsinline preload="metadata" aria-label="Vista previa de ${esc(exercise.name)}"></video>`;
   return `<section class="exercise-gallery"><header><div><span class="micro-label">VISTA RÁPIDA</span><h2>Explora tu entrenamiento</h2></div><small>${picks.length} previews</small></header><article class="gallery-feature"><button data-library-select="${picks[0].id}">${media(picks[0])}<span><b>${esc(picks[0].name)}</b><small>${picks[0].group} · VER DETALLE →</small></span></button></article><div class="gallery-grid">${picks.slice(1).map(exercise => `<article class="gallery-tile"><button data-library-select="${exercise.id}">${media(exercise)}<span><b>${esc(exercise.name)}</b><small>${exercise.group}</small></span></button></article>`).join('')}</div></section>`;
 }
@@ -646,7 +783,7 @@ function renderDashboard() {
   renderNav(); paintAllBodies(); updateWorkoutTimer();
 }
 function navigate(view,scroll=true) {
-  ui.view = view; renderDashboard();
+  ui.view = view; trackEvent('dashboard_tab_view', { tab: view }); renderDashboard(); syncUrlState();
   if (scroll) home.scrollTo({top:0,behavior:'smooth'});
 }
 function openCheckin() {
@@ -654,11 +791,16 @@ function openCheckin() {
   ui.checkinOpen = true; renderDashboard();
 }
 
+function openProfessionalChat() {
+  if (intro.hidden) navigate('ai');
+  else showToast('Te conectaremos con un profesional cuando esta opción esté disponible.');
+}
+
 home.addEventListener('click',event => {
   const dashboardTarget = event.target.closest('[data-dashboard]');
   if (dashboardTarget) { navigate(dashboardTarget.dataset.dashboard); return; }
   const nutritionTab = event.target.closest('[data-nutrition-tab]');
-  if (nutritionTab) { ui.nutritionTab = nutritionTab.dataset.nutritionTab; if (ui.nutritionTab !== 'log') ui.nutritionSelectedFood = null; renderDashboard(); return; }
+  if (nutritionTab) { ui.nutritionTab = nutritionTab.dataset.nutritionTab; if (ui.nutritionTab !== 'log') ui.nutritionSelectedFood = null; renderDashboard(); syncUrlState(); return; }
   const nutritionQuery = event.target.closest('[data-nutrition-query]');
   if (nutritionQuery) { searchNutritionFoods(nutritionQuery.dataset.nutritionQuery); return; }
   if (event.target.closest('[data-nutrition-search-submit]')) { searchNutritionFoods(document.querySelector('[data-nutrition-search]')?.value); return; }
@@ -714,6 +856,7 @@ home.addEventListener('click',event => {
   if (planTime) { Core.updateDaily(appState,{time:Number(planTime.dataset.planTime)}); renderDashboard(); return; }
   if (event.target.closest('[data-start-workout]')) {
     if (!appState.activeWorkout) Core.startWorkout(appState,{plan:Core.planForToday(appState)});
+    trackEvent('workout_start', { source: ui.view, title: Core.planForToday(appState).title });
     ui.workoutPaused = false; ui.workoutPauseStartedAt = 0; ui.workoutPausedTotal = 0; ui.restRemaining = 0; ui.restStartedAt = 0;
     navigate('workout'); vibrate(18); return;
   }
@@ -744,6 +887,7 @@ home.addEventListener('click',event => {
   if (event.target.closest('[data-finish-workout]')) {
     const result = Core.finishWorkout(appState);
     if (result.error) { showToast(result.error); return; }
+    trackEvent('workout_complete', { sets: result.session?.sets || 0, durationMin: result.session?.durationMin || 0 });
     const principalMuscle = Object.entries(result.changes).sort((a,b) => b[1].drop - a[1].drop)[0]?.[0];
     ui.resultBodyView = principalMuscle && Core.MUSCLES[principalMuscle].views.front ? 'front' : 'back';
     navigate('result'); vibrate([20,35,20]); return;
@@ -760,6 +904,7 @@ home.addEventListener('click',event => {
     const exercise = findLibraryExercise(startExercise.dataset.startExercise);
     if (!exercise) { showToast('No pudimos abrir ese ejercicio.'); return; }
     Core.startWorkout(appState,{exercises:[exercise],title:exercise.name,templateId:'local-library'});
+    trackEvent('workout_start', { source: 'library', exercise: exercise.name });
     ui.workoutPaused = false; ui.workoutPauseStartedAt = 0; ui.workoutPausedTotal = 0; ui.restRemaining = 0; ui.restStartedAt = 0;
     navigate('workout'); return;
   }
@@ -772,7 +917,9 @@ home.addEventListener('click',event => {
   const equipmentItem = event.target.closest('[data-equipment-item]');
   if (equipmentItem) { Core.toggleEquipment(appState,equipmentItem.dataset.equipmentItem); showToast('Equipo actualizado.'); renderDashboard(); return; }
   if (connection) { Core.toggleConnection(appState,connection.dataset.connection); showToast(appState.connections[connection.dataset.connection] ? 'Conexión marcada como activa para el prototipo.' : 'Conexión desactivada.'); renderDashboard(); return; }
-  if (event.target.closest('[data-replay-intro]')) { showIntro(false); return; }
+  const editOnboarding = event.target.closest('[data-edit-onboarding]');
+  if (editOnboarding) { showIntro(false, Number(editOnboarding.dataset.editOnboarding)); return; }
+  if (event.target.closest('[data-replay-intro]')) { showIntro(false, 0); return; }
   if (event.target.closest('[data-logout]')) { Core.markLoggedOut(appState); showIntro(true); }
 });
 
@@ -809,13 +956,24 @@ function sendAiMessage(question) {
 }
 function finishIntro() {
   Core.completeOnboarding(appState,introState.answers,introState.avatar);
+  trackEvent('onboarding_complete', { avatar: introState.avatar, durationMs: introState.startedAt ? Date.now() - introState.startedAt : 0 });
   ui.libraryAvatar = introState.avatar === 'Aquiles' ? 'Aquiles' : 'Helena';
-  intro.hidden = true; home.hidden = false; ui.view = 'today'; renderDashboard();
+  intro.hidden = true; home.hidden = false; ui.view = 'today'; renderDashboard(); syncUrlState();
 }
-function showIntro(loggedOut) {
-  home.hidden = true; intro.hidden = false; introState.progress = 0; introState.target = 0; introState.step = 0; introState.frame = -1; count.textContent = '01 / 08';
-  if (loggedOut) introState.answers = {};
-  renderCopy(); updateIntro();
+function introAnswersFromProfile() {
+  const profile = appState.profile || {};
+  return { 1:profile.goal, 2:profile.experience, frequency:profile.frequency, location:profile.trainingPlace, age:profile.age, weight:profile.weight, height:profile.height, 5:profile.nutrition, 6:['Lesiones','Limitaciones','Ambas','Nada que informar'].includes(profile.care) ? profile.care : 'Nada que informar' };
+}
+function showIntro(loggedOut = false, startStep = 0) {
+  home.hidden = true; intro.hidden = false;
+  introState.answers = loggedOut ? {} : introAnswersFromProfile();
+  introState.progress = 0; introState.target = 0; introState.step = 0; introState.frame = -1;
+  introState.startedAt = Date.now(); introState.stepStartedAt = Date.now();
+  const safeStep = Math.max(0, Math.min(steps.length - 1, Number(startStep) || 0));
+  if (safeStep) { introState.step = safeStep; introState.progress = introState.target = Math.min(0.94, (safeStep + 0.5) / steps.length); }
+  count.textContent = `${String(safeStep + 1).padStart(2,'0')} / 08`;
+  trackEvent('onboarding_start', { mode: loggedOut ? 'new' : safeStep ? 'edit' : 'review', step: safeStep + 1 });
+  renderCopy(); updateIntro(); syncUrlState();
 }
 function formatClock(seconds) { const safe = Math.max(0,Math.floor(Number(seconds) || 0)); return `${String(Math.floor(safe / 60)).padStart(2,'0')}:${String(safe % 60).padStart(2,'0')}`; }
 function workoutElapsedSeconds() {
@@ -1016,10 +1174,17 @@ function paintAllBodies() { document.querySelectorAll('[data-body-canvas]').forE
 function boot() {
   renderCopy(); updateIntro(); warmFrames(0);
   loadLocalExerciseLibrary();
-  const forceIntro = new URLSearchParams(location.search).get('intro') === '1';
-  if (appState.onboardingComplete && !forceIntro) { intro.hidden = true; home.hidden = false; renderDashboard(); }
-  else { intro.hidden = false; home.hidden = true; }
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js?v=65',{updateViaCache:'none'}).then(registration => registration.update()).catch(() => {});
+  const urlParams = new URLSearchParams(location.search);
+  const forceIntro = urlParams.get('intro') === '1' || urlParams.has('introStep');
+  if (forceIntro && (appState.onboardingComplete || appState.onboardingCompleted)) introState.answers = introAnswersFromProfile();
+  if ((appState.onboardingComplete || appState.onboardingCompleted) && !forceIntro) { intro.hidden = true; home.hidden = false; restoreUrlState(); renderDashboard(); syncUrlState(); }
+  else {
+    intro.hidden = false; home.hidden = true;
+    const requestedIntroStep = Math.max(0, Math.min(steps.length - 1, (Number(new URLSearchParams(location.search).get('introStep')) || 1) - 1));
+    if (requestedIntroStep) { introState.step = requestedIntroStep; introState.progress = introState.target = Math.min(0.94, (requestedIntroStep + 0.5) / steps.length); count.textContent = `${String(requestedIntroStep + 1).padStart(2,'0')} / 08`; renderCopy(); updateIntro(); }
+  }
+  if (!intro.hidden) { introState.startedAt = Date.now(); introState.stepStartedAt = Date.now(); trackEvent('onboarding_start', { mode: 'new', step: 1 }); }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js?v=71',{updateViaCache:'none'}).then(registration => registration.update()).catch(() => {});
 }
 
 boot();
