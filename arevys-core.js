@@ -73,7 +73,10 @@
     { id: 'dumbbells', label: 'Mancuernas', description: 'Pesos libres' },
     { id: 'barbell', label: 'Barra y discos', description: 'Carga progresiva' },
     { id: 'cable', label: 'Polea', description: 'Tensión constante' },
-    { id: 'machines', label: 'Máquinas', description: 'Recorrido guiado' },
+    { id: 'machines', label: 'Máquinas guiadas', description: 'Recorrido guiado' },
+    { id: 'leg_press', label: 'Prensa de piernas', description: 'Máquina de piernas' },
+    { id: 'hamstring_machine', label: 'Curl femoral', description: 'Isquiotibiales' },
+    { id: 'calf_machine', label: 'Máquina de pantorrillas', description: 'Gemelos y tobillo' },
     { id: 'bench', label: 'Banca', description: 'Apoyo y press' },
     { id: 'bands', label: 'Bandas', description: 'Resistencia elástica' },
     { id: 'mat', label: 'Colchoneta', description: 'Suelo y movilidad' },
@@ -110,6 +113,9 @@
   function exerciseEquipmentId(exercise) {
     const equipment = String(exercise?.equipment || '').toLowerCase();
     if (equipment.includes('polea')) return 'cable';
+    if (exercise?.id === 'prensa') return 'leg_press';
+    if (exercise?.id === 'curl_femoral') return 'hamstring_machine';
+    if (exercise?.id === 'pantorrilla') return 'calf_machine';
     if (equipment.includes('máquina') || equipment.includes('maquina')) return 'machines';
     if (equipment.includes('barra')) return 'barbell';
     if (equipment.includes('mancuer')) return 'dumbbells';
@@ -120,7 +126,8 @@
 
   function exerciseAvailable(exercise, profile = {}) {
     const equipmentId = exerciseEquipmentId(exercise);
-    return equipmentId === 'bodyweight' || (equipmentId && equipmentProfile(profile).selected.includes(equipmentId));
+    const selected = equipmentProfile(profile).selected;
+    return equipmentId === 'bodyweight' || (equipmentId && (selected.includes(equipmentId) || (['leg_press','hamstring_machine','calf_machine'].includes(equipmentId) && selected.includes('machines'))));
   }
 
   function templateExercises(template, state) {
